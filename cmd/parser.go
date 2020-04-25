@@ -38,13 +38,29 @@ func (n *Node) addParents(nodes ...*Node) {
 	}
 }
 
-func (b *BN) getNode(name string) *Node {
-	for i := 0; i < len(b.nodes); i++ {
-		if b.nodes[i].Name == name {
-			return b.nodes[i]
+// not efficient but simple, for bigger net is better use an hash list
+func (bn *BN) getNode(name string) *Node {
+	for i := 0; i < len(bn.nodes); i++ {
+		if bn.nodes[i].Name == name {
+			return bn.nodes[i]
 		}
 	}
 	return nil
+}
+
+func (bn *BN) updatePrior(matchprior map[string]string) {
+	node := bn.getNode(matchprior["var"])
+	probabilities := strings.Split(matchprior["prior"], ", ")
+	i := 0
+	for name := range node.prob.states {
+		node.prob.states[name], _ = strconv.ParseFloat(probabilities[i], 64)
+		node.CPT[i] = node.prob.states[name]
+		i++
+	}
+}
+
+func (n *Node) updateCPT(cptvalues []string) {
+
 }
 
 func errorCheck(e error) {
@@ -58,20 +74,18 @@ func ReadBIF_V2() {
 		nodes: make([]*Node, 0),
 	}
 	varpattern, _ := regexp.Compile("variable (?P<var>[[:alpha:]]*) \\{\n  type (?P<type>[a-z]*) \\[ (?P<nval>\\d+) \\] \\{ (?P<state>.*) \\};")
-	priorprobpattern, _ := regexp.Compile("probability \\( (?P<var>[^|].+) \\) \\{\n  table (?P<prior>.*);")
+	priorprobpattern, _ := regexp.Compile("probability \\( (?P<var>[^|,]+) \\) \\{\n  table (?P<prior>.+);")
 	condprobpattern, _ := regexp.Compile("probability \\( (?P<child>.+) \\| (?P<parents>.+) \\) \\{\n")
 	condprobpattern2, _ := regexp.Compile("  \\((?P<key>.+)\\) (?P<values>.+);")
 	file, err := ioutil.ReadFile("data/earthquake.bif")
-	// fmt.Println(string(file))
 	errorCheck(err)
 	matchvar := map[string]string{}
 	matchprior := map[string]string{}
+	matchparents := map[string]string{}
 	// variables := make([]string, 0)
 	// variables = append(variables, varpattern.FindAllString(string(file), -1)...)
 	// fmt.Println(varpattern.FindAllString(string(file), -1))
 	variables := varpattern.FindAllStringSubmatch(string(file), -1)
-	fmt.Println("PRIOR:\n", priorprobpattern.FindAllStringSubmatch(string(file), -1))
-	fmt.Println(priorprobpattern.SubexpNames())
 
 	fmt.Println("COND:\n", condprobpattern.FindAllStringSubmatch(string(file), -1))
 	fmt.Println(condprobpattern.SubexpNames())
@@ -80,29 +94,36 @@ func ReadBIF_V2() {
 	fmt.Println(condprobpattern2.SubexpNames())
 	// variables := varpattern.FindAllString(string(file), -1)
 	keys := varpattern.SubexpNames()
-	// fmt.Printf("match: '%s'\nname: '%s'\n", variables[0], keys[1])
-	fmt.Println(keys)
 	for _, v := range variables { // for every variable
-		for i, n := range v { // i is the index, n is the matched name
-			// fmt.Printf("%d. match='%s'\tname='%s'\n", i, n, keys[i])
-			matchvar[keys[i]] = n
+		for i, mName := range v { // i is the index, mName is the matched name
+			matchvar[keys[i]] = mName
 		}
 		bn.createNode(matchvar)
 	}
-	keys = priorprobpattern.SubexpNames()
 	// TODO make some clean in the code
-	for _, p := range priorprobpattern.FindAllStringSubmatch(string(file), -1) {
-		fmt.Println(p)
-		for i, n := range p {
-			matchprior[keys[i]] = n
+	keys = priorprobpattern.SubexpNames()
+	for _, p := range priorprobpattern.FindAllStringSubmatch(string(file), -1) { // foreach prior probability found
+		// fmt.Println(p)
+		for i, mName := range p { // i is the index, mName is the matched name
+			matchprior[keys[i]] = mName
 		}
-		// TODO updatePrior(map[string]string)
-		// TODO updateCPT()
+		bn.updatePrior(matchprior)
 	}
-	for key, val := range matchprior {
-		fmt.Printf("key: '%s'\t-\tvalue: '%s'\n", key, val)
+
+	keys = condprobpattern.SubexpNames()
+	for _, rel := range condprobpattern.FindAllStringSubmatch(string(file), -1) { // foreach relation child parents
+		// fmt.Println(rel)
+		for i, mName := range rel { // i is the index, mName is the matched name
+			matchparents[keys[i]] = mName
+		}
+		node := bn.getNode(matchparents["child"])
+		parentnames := strings.Split(matchparents["parents"], ", ")
+		for _, p := range parentnames {
+			node.addParents(bn.getNode(p))
+		}
+
+		// TODO UPDATE CPT
 	}
-	fmt.Println("LEN:", len(variables))
 	// for key, val := range matchvar {
 	// 	fmt.Printf("key: '%s'\t-\tvalue: '%s'\n", key, val)
 	// }
@@ -180,6 +201,9 @@ func (bn *BN) createNode(match map[string]string) {
 		prob: Probabilities{
 			states: states,
 		},
+		CPT:     make(map[int]float64),
+		parents: make([]*Node, 0),
+		child:   make([]*Node, 0),
 	}
 	bn.nodes = append(bn.nodes, &node)
 }
@@ -187,10 +211,13 @@ func (bn *BN) createNode(match map[string]string) {
 func (bn *BN) listNodes() {
 	fmt.Println("Listing nodes")
 	for _, node := range bn.nodes {
-		fmt.Println(node.Name)
-		fmt.Println(node.Type)
-		fmt.Println(node.numvalues)
-		fmt.Println(node.prob.states)
+		fmt.Println("Name: ", node.Name)
+		fmt.Println("type: ", node.Type)
+		fmt.Println("nval: ", node.numvalues)
+		fmt.Println("CPT: ", node.CPT)
+		fmt.Println("states: ", node.prob.states)
+		fmt.Println("child: ", node.child)
+		fmt.Println("parents: ", node.parents)
 		fmt.Println("")
 	}
 }
