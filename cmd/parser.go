@@ -59,7 +59,14 @@ func (bn *BN) updatePrior(matchprior map[string]string) {
 	}
 }
 
-func (n *Node) updateCPT(cptvalues []string) {
+func (n *Node) updateCPT(cptvalues string, index int) {
+	splitted := strings.Split(cptvalues, ", ")
+	fmt.Println(splitted)
+	for i := 0; i < len(splitted); i++ {
+		value, _ := strconv.ParseFloat(splitted[i], 64)
+		n.CPT[index] = value
+		index++
+	}
 
 }
 
@@ -77,7 +84,7 @@ func ReadBIF_V2() {
 	priorprobpattern, _ := regexp.Compile("probability \\( (?P<var>[^|,]+) \\) \\{\n  table (?P<prior>.+);")
 	condprobpattern, _ := regexp.Compile("probability \\( (?P<child>.+) \\| (?P<parents>.+) \\) \\{\n")
 	condprobpattern2, _ := regexp.Compile("  \\((?P<key>.+)\\) (?P<values>.+);")
-	file, err := ioutil.ReadFile("data/earthquake.bif")
+	file, err := ioutil.ReadFile("data/survey.bif")
 	errorCheck(err)
 	matchvar := map[string]string{}
 	matchprior := map[string]string{}
@@ -86,7 +93,7 @@ func ReadBIF_V2() {
 	// variables = append(variables, varpattern.FindAllString(string(file), -1)...)
 	// fmt.Println(varpattern.FindAllString(string(file), -1))
 	variables := varpattern.FindAllStringSubmatch(string(file), -1)
-
+	cpts := condprobpattern2.FindAllStringSubmatch(string(file), -1)
 	fmt.Println("COND:\n", condprobpattern.FindAllStringSubmatch(string(file), -1))
 	fmt.Println(condprobpattern.SubexpNames())
 
@@ -109,7 +116,7 @@ func ReadBIF_V2() {
 		}
 		bn.updatePrior(matchprior)
 	}
-
+	j := 0
 	keys = condprobpattern.SubexpNames()
 	for _, rel := range condprobpattern.FindAllStringSubmatch(string(file), -1) { // foreach relation child parents
 		// fmt.Println(rel)
@@ -121,16 +128,16 @@ func ReadBIF_V2() {
 		for _, p := range parentnames {
 			node.addParents(bn.getNode(p))
 		}
-
-		// TODO UPDATE CPT
+		tabledim := 0
+		for _, p := range node.parents {
+			tabledim += p.numvalues
+		}
+		for i := 0; i < node.numvalues*tabledim; i++ {
+			node.updateCPT(cpts[i+j][2], len(cpts[i+j][2]))
+		}
+		j += tabledim
 	}
-	// for key, val := range matchvar {
-	// 	fmt.Printf("key: '%s'\t-\tvalue: '%s'\n", key, val)
-	// }
 	bn.listNodes()
-	// for _, v := range variables {
-	// 	fmt.Println(v)
-	// }
 }
 
 // ReadBIF is use to read a bif file
