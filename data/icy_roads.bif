@@ -1,0 +1,22 @@
+network unknown {
+}
+variable Icy {
+  type discrete [ 2 ] { True, False };
+}
+variable Holmes {
+  type discrete [ 2 ] { True, False };
+}
+variable Watson {
+  type discrete [ 2 ] { True, False };
+}
+probability ( Icy ) {
+  table 0.7, 0.3;
+}
+probability ( Holmes | Icy ) {
+  (True) 0.8, 0.2;
+  (False) 0.1, 0.9;
+}
+probability ( Watson | Icy ) {
+  (True) 0.8, 0.2;
+  (False) 0.1, 0.9;
+}
