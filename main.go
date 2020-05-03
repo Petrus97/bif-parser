@@ -10,7 +10,7 @@ import (
 func main() {
 	fmt.Println("Hello")
 	start := time.Now()
-	myNet := parser.ReadBIF("data/survey.bif")
+	myNet := parser.ReadBIF("data/icy_roads.bif")
 	fmt.Println(time.Now().Sub(start))
 	fmt.Println(myNet)
 	myNet.ListNodes()

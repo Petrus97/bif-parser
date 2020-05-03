@@ -21,7 +21,7 @@ func (bn *BN) GetNode(name string) *Node {
 	return nil
 }
 
-// UpdatePrior probabilities in net
+// UpdatePrior probabilities during parsing
 func (bn *BN) UpdatePrior(matchprior map[string]string) {
 	node := bn.GetNode(matchprior["var"])
 	probabilities := strings.Split(matchprior["prior"], ", ")
