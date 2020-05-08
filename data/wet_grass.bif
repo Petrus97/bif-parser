@@ -1,0 +1,30 @@
+network unknown {
+}
+variable Rain {
+  type discrete [ 2 ] { True, False };
+}
+variable Sprinkler {
+  type discrete [ 2 ] { True, False };
+}
+variable Holmes {
+  type discrete [ 2 ] { True, False };
+}
+variable Watson {
+  type discrete [ 2 ] { True, False };
+}
+probability ( Rain ) {
+  table 0.2, 0.8;
+}
+probability ( Sprinkler ) {
+  table 0.1, 0.9;
+}
+probability ( Holmes | Sprinkler, Rain ) {
+  (True, True) 1, 0;
+  (False, True) 1, 0;
+  (True, False) 0.9, 0.1;
+  (False, False) 0, 1;
+}
+probability ( Watson | Rain ) {
+  (True) 1, 0;
+  (False) 0.2, 0.8;
+}
