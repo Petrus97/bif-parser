@@ -26,7 +26,7 @@ func ReadBIF(filepath string) *bn.BN {
 	varpattern, _ := regexp.Compile("variable (?P<var>[[:graph:]]*) \\{\n  type (?P<type>[a-z]*) \\[ (?P<nval>\\d+) \\] \\{ (?P<state>.*) \\};")
 	priorprobpattern, _ := regexp.Compile("probability \\( (?P<var>[^|,]+) \\) \\{\n  table (?P<prior>.+);")
 	condprobpattern, _ := regexp.Compile("probability \\( (?P<child>.+) \\| (?P<parents>.+) \\) \\{\n")
-	condprobpattern2, _ := regexp.Compile("  \\((?P<key>.+)\\) (?P<values>.+);")
+	condprobpattern2, _ := regexp.Compile("  (?P<domain>\\(.+\\)) (?P<values>.+);")
 
 	file, err := ioutil.ReadFile(filepath)
 	errorCheck(err)
@@ -37,7 +37,9 @@ func ReadBIF(filepath string) *bn.BN {
 
 	variables := varpattern.FindAllStringSubmatch(string(file), -1)
 	cpts := condprobpattern2.FindAllStringSubmatch(string(file), -1)
-
+	otherkey := condprobpattern2.SubexpNames()
+	fmt.Println(otherkey)
+	fmt.Println(condprobpattern2.FindAllStringSubmatch(string(file), -1))
 	keys := varpattern.SubexpNames()
 	for _, v := range variables { // for every variable
 		for i, mName := range v { // i is the index, mName is the matched name
