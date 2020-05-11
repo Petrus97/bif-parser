@@ -26,7 +26,7 @@ func ReadBIF(filepath string) *bn.BN {
 	varpattern, _ := regexp.Compile("variable (?P<var>[[:graph:]]*) \\{\n  type (?P<type>[a-z]*) \\[ (?P<nval>\\d+) \\] \\{ (?P<state>.*) \\};")
 	priorprobpattern, _ := regexp.Compile("probability \\( (?P<var>[^|,]+) \\) \\{\n  table (?P<prior>.+);")
 	condprobpattern, _ := regexp.Compile("probability \\( (?P<child>.+) \\| (?P<parents>.+) \\) \\{\n")
-	condprobpattern2, _ := regexp.Compile("  (?P<domain>\\(.+\\)) (?P<values>.+);")
+	condprobpattern2, _ := regexp.Compile("  \\((?P<domain>.+)\\) (?P<values>.+);")
 
 	file, err := ioutil.ReadFile(filepath)
 	errorCheck(err)
@@ -39,7 +39,7 @@ func ReadBIF(filepath string) *bn.BN {
 	cpts := condprobpattern2.FindAllStringSubmatch(string(file), -1)
 	otherkey := condprobpattern2.SubexpNames()
 	fmt.Println(otherkey)
-	fmt.Println(condprobpattern2.FindAllStringSubmatch(string(file), -1))
+	//fmt.Println(condprobpattern2.FindAllStringSubmatch(string(file), -1))
 	keys := varpattern.SubexpNames()
 	for _, v := range variables { // for every variable
 		for i, mName := range v { // i is the index, mName is the matched name
@@ -47,7 +47,7 @@ func ReadBIF(filepath string) *bn.BN {
 		}
 		bn.CreateNode(matchvar)
 	}
-	fmt.Println(len(bn.Nodes))
+	//fmt.Println(len(bn.Nodes))
 	keys = priorprobpattern.SubexpNames()
 	for _, p := range priorprobpattern.FindAllStringSubmatch(string(file), -1) { // foreach prior probability found
 		for i, mName := range p { // i is the index, mName is the matched name
@@ -68,19 +68,29 @@ func ReadBIF(filepath string) *bn.BN {
 			node.AddParents(bn.GetNode(parentnames[i]))
 			nval *= node.Parents[i].Numvalues
 		}
+		node.Domain = make([][]string, 0)
 		// fmt.Println(node.Name, nval)
 		for i := 0; i < nval; i++ {
 			if i >= nval {
 				break
 			}
-			values := make([]float64, 0)
+			// values := make([]float64, 0)
 			svalues := strings.Split(cpts[i+j][2], ", ")
+			sdomains := strings.Split(cpts[i+j][1], ", ")
+			fmt.Println(sdomains)
 			for _, s := range svalues {
 				if f, err := strconv.ParseFloat(s, 64); err == nil {
-					values = append(values, f)
+					node.CPT = append(node.CPT, f)
 				}
 			}
-			node.CPT = append(node.CPT, values)
+			for t := 0; t < node.Numvalues; t++ {
+				myDomain := make([]string, 0)
+				myDomain = append(myDomain, node.Prob.States[t])
+				for _, s := range sdomains {
+					myDomain = append(myDomain, s)
+				}
+				node.Domain = append(node.Domain, myDomain)
+			}
 		}
 		j += nval
 	}

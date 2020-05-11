@@ -69,3 +69,12 @@ func InitIcyRoadJT(bn *BN) (jt *JunctionTree) {
 	var junc JunctionTree
 	return &junc
 }
+
+func (bn *BN) MatchDomains() {
+	for _, n := range bn.Nodes {
+		matches := map[interface{}]float64{}
+		for i := 0; i < len(n.CPT); i++ {
+			matches[n.Domain[i]] = n.CPT[i]
+		}
+	}
+}
