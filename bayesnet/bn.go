@@ -33,6 +33,10 @@ func (bn *BN) UpdatePrior(matchprior map[string]string) {
 			i++
 		}
 	}
+	node.Domain = make([][]string, len(node.Prob.States))
+	for i := 0; i < len(node.Prob.States); i++ {
+		node.Domain[i] = append(node.Domain[i], node.Prob.States[i])
+	}
 
 }
 

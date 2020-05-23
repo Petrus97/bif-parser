@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"fmt"
 	"io/ioutil"
 	"regexp"
 	"strconv"
@@ -37,8 +36,8 @@ func ReadBIF(filepath string) *bn.BN {
 
 	variables := varpattern.FindAllStringSubmatch(string(file), -1)
 	cpts := condprobpattern2.FindAllStringSubmatch(string(file), -1)
-	otherkey := condprobpattern2.SubexpNames()
-	fmt.Println(otherkey)
+	// otherkey := condprobpattern2.SubexpNames()
+	// fmt.Println(otherkey)
 	//fmt.Println(condprobpattern2.FindAllStringSubmatch(string(file), -1))
 	keys := varpattern.SubexpNames()
 	for _, v := range variables { // for every variable
@@ -77,7 +76,7 @@ func ReadBIF(filepath string) *bn.BN {
 			// values := make([]float64, 0)
 			svalues := strings.Split(cpts[i+j][2], ", ")
 			sdomains := strings.Split(cpts[i+j][1], ", ")
-			fmt.Println(sdomains)
+			// fmt.Println(sdomains)
 			for _, s := range svalues {
 				if f, err := strconv.ParseFloat(s, 64); err == nil {
 					node.CPT = append(node.CPT, f)

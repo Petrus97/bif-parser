@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	bn "github.com/Petrus97/bif-parser/bayesnet"
@@ -18,6 +19,27 @@ func main() {
 	icy := myNet.GetNode("Icy")
 	holmes := myNet.GetNode("Holmes")
 
+	// Naive method to create join prob table icy-holmes
+	var jpt []float64
+	if len(holmes.CPT) > len(icy.CPT) {
+		jpt = make([]float64, len(holmes.CPT))
+		for i := 0; i < len(holmes.Domain); i++ {
+			jpt[i] = holmes.CPT[i]
+			fmt.Println(holmes.CPT[i], "\t", holmes.Domain[i])
+			for j := 1; j < len(holmes.Domain[i]); j++ {
+				dom := holmes.Domain[i][j]
+				parent := holmes.Parents[j-1]
+				var index int
+				for k := 0; k < len(parent.Prob.States); k++ {
+					if strings.Compare(dom, parent.Prob.States[k]) == 0 {
+						index = k
+					}
+				}
+				jpt[i] *= parent.CPT[index]
+			}
+		}
+	}
+	fmt.Println(jpt)
 	// fmt.Println("Watson")
 	// watson.GetPotential()
 	// holmes := myNet.GetNode("Holmes")
@@ -28,5 +50,5 @@ func main() {
 	hfact := bn.CreateFactor(holmes)
 	fmt.Println(ifact)
 	fmt.Println(hfact)
-	bn.FactorProduct(ifact, hfact)
+	// bn.FactorProduct(ifact, hfact)
 }

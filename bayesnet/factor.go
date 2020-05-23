@@ -3,6 +3,8 @@ package bayesnet
 import (
 	"fmt"
 	"reflect"
+
+	mu "github.com/Petrus97/bif-parser/math-utils"
 )
 
 // Factor data type is the product of CPTs of nodes. ex: (X1)-->(X2)<--(X3) Φ(1, 2, 3) = P(X2 | X1, X3)*P(X1)*P(X3)
@@ -55,43 +57,98 @@ func FactorProduct(A *Factor, B *Factor) {
 	for i := 0; i < len(C.Values); i++ {
 		values = append(values, i)
 	}
-	IndexToAssignment(values, C.Numvalues)
+	assignments := IndexToAssignment(values, C.Numvalues)
+	fmt.Println(assignments)
+
 }
 
-func IndexToAssignment(values []int, cval []int) {
-	fmt.Println("Before", values)
-	newvct := make([][]int, 0)
-	newvct = append(newvct, values)
-	newvct = append(newvct, values)
-	fmt.Println(newvct)
-	fmt.Println(cval)
-	vect := make([]int, 0)
-	vect = append(vect, 1)
-	for i := 0; i < len(cval)-1; i++ {
-		k := vect[i] * cval[i]
-		vect = append(vect, k)
+func IndexToAssignment(factorvalues []int, factornval []int) *mu.Matrix {
+	valuevector := mu.NewVector(factorvalues)
+	nvalvector := mu.NewVector(factornval)
+	repeatI := mu.Repmat(valuevector.T(), 1, len(factornval))
+	fmt.Println("repeat_I", repeatI)
+	cprod := mu.Cumprod(mu.CreateNewSlice([]int{1}, nvalvector.Data[:len(nvalvector.Data)-1]))
+	cprodvector := mu.NewVector(cprod)
+	repeatD := mu.Repmat(cprodvector, len(factorvalues), 1)
+	fmt.Println("repeat_D", repeatD)
+	numerator, err := mu.MatrixDivision(repeatI, repeatD)
+	if err != nil {
+		fmt.Println(err)
 	}
-	fmt.Println(vect)
-	numerator := make([][]int, len(cval))
-	for l := range numerator {
-		numerator[l] = make([]int, len(values))
+	fmt.Println("numerator", numerator)
+	denominator := mu.Repmat(nvalvector, len(factorvalues), 1)
+	fmt.Println("den", denominator)
+	indexes, err := mu.MatrixMod(numerator, denominator)
+	if err != nil {
+		fmt.Println(err)
 	}
-	for i, e := range vect {
-		mult := newvct[i]
-		for j := 0; j < len(mult); j++ {
-			fmt.Println(mult[j], e, "=", mult[j]/e)
-			numerator[i][j] = mult[j] / e
-		}
-	}
-	fmt.Println(numerator)
-	denominator := make([][]int, len(cval))
-	for i := range denominator {
-		denominator[i] = make([]int, len(values))
-	}
-	for i := 0; i < len(cval); i++ {
-		denominator[i] = cval
-	}
-	fmt.Println(denominator)
+	fmt.Println("indexes", indexes)
+	return indexes
+	// fmt.Println("Before", values)
+	// newvct := make([][]int, 0)
+	// myvector := make([][]int, len(values))
+	// for i := 0; i < len(values); i++ {
+	// 	myvector[i] = make([]int, 0)
+	// }
+	// for i := 0; i < len(values); i++ {
+	// 	if i%len(cval) == 0 {
+	// 		myvector[i] = values[:len(cval)]
+	// 	} else {
+	// 		myvector[i] = values[len(cval):]
+	// 	}
+
+	// }
+	// fmt.Println("myvector", myvector)
+	// newvct = append(newvct, values)
+	// newvct = append(newvct, values)
+	// fmt.Println("newvct", newvct)
+	// fmt.Println("cval", cval)
+	// vect := make([]int, 0)
+	// vect = append(vect, 1)
+	// for i := 0; i < len(cval)-1; i++ {
+	// 	k := vect[i] * cval[i]
+	// 	vect = append(vect, k)
+	// }
+	// fmt.Println("vect", vect)
+	// numerator := make([][]int, len(cval))
+	// for l := range numerator {
+	// 	numerator[l] = make([]int, len(values))
+	// }
+	// newnumerator := make([][]int, len(values))
+	// for i := range newnumerator {
+	// 	newnumerator[i] = make([]int, len(cval))
+	// }
+
+	// // [[0 0] [1 0] [2 1] [3 1]]
+	// /*
+	// 	0 0 = 0 / 1  0 / 2
+	// 	1 0 = 1 / 1  1 / 2
+	// 	2 1 = 2 / 1  2 / 2
+	// 	3 1 = 3 / 1  3 / 2
+	// */
+	// fmt.Println("newnumerator", newnumerator)
+	// for i, e := range vect {
+	// 	mult := newvct[i]
+	// 	for j := 0; j < len(mult); j++ {
+	// 		fmt.Println(mult[j], e, "=", mult[j]/e)
+	// 		numerator[i][j] = mult[j] / e
+	// 	}
+	// }
+	// fmt.Println("numerator", numerator)
+	// denominator := make([][]int, len(cval))
+	// for i := range denominator {
+	// 	denominator[i] = make([]int, len(values))
+	// }
+	// for i := 0; i < len(cval); i++ {
+	// 	denominator[i] = cval
+	// }
+	// fmt.Println("denominator", denominator)
+}
+
+func AssignmentToIndex(assignments *mu.Matrix, factorcard []int) {
+	//cardvect := mu.NewVector(factorcard)
+	//cprodD := mu.Cumprod(1, cardvect)
+
 }
 
 func intersect(A *Factor, B *Factor) []*Node {
