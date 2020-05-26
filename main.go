@@ -51,4 +51,29 @@ func main() {
 	fmt.Println(ifact)
 	fmt.Println(hfact)
 	// bn.FactorProduct(ifact, hfact)
+
+	icyfact := new(bn.FactorV2)
+	icyfact.CPT = icy.CPT
+	icyfact.Scope = append(icyfact.Scope, icy)
+	icyfact.Card = append(icyfact.Card, icy.Numvalues)
+
+	holmesfact := new(bn.FactorV2)
+	holmesfact.CPT = holmes.CPT
+	holmesfact.Scope = append(holmesfact.Scope, holmes)
+	holmesfact.Scope = append(holmesfact.Scope, holmes.Parents...)
+	holmesfact.Card = append(holmesfact.Card, holmes.Numvalues)
+	for _, p := range holmes.Parents {
+		holmesfact.Card = append(holmesfact.Card, p.Numvalues)
+	}
+
+	fmt.Println("F V2 Icy", icyfact)
+	fmt.Println("F V2 Holmes", holmesfact)
+
+	ih := bn.MultiplyFactor(icyfact, holmesfact)
+	fmt.Println("F V2 Icy", icyfact)
+	fmt.Println("F V2 Holmes", holmesfact)
+	fmt.Println("Icy-Holmes", ih)
+
+	h := bn.DivideFactor(&ih, icyfact)
+	fmt.Println(h)
 }

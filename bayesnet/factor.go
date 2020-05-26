@@ -5,6 +5,7 @@ import (
 	"reflect"
 
 	mu "github.com/Petrus97/bif-parser/math-utils"
+	"github.com/jinzhu/copier"
 )
 
 // Factor data type is the product of CPTs of nodes. ex: (X1)-->(X2)<--(X3) Φ(1, 2, 3) = P(X2 | X1, X3)*P(X1)*P(X3)
@@ -12,6 +13,13 @@ type Factor struct {
 	Var       []*Node
 	Numvalues []int
 	Values    []float64
+}
+
+type FactorV2 struct {
+	Scope   []*Node
+	Card    []int
+	CPT     []float64
+	Strides map[*Node]int
 }
 
 // CreateFactor takes in input a node of bayesian network and build a factor
@@ -31,6 +39,10 @@ func CreateFactor(n *Node) *Factor {
 	return &factor
 }
 
+// FactorProduct permits to calculate Ψ(R, T, L), consider the net (R)->(T)->(L)
+// We have to calculate multiple joins, We have P(R), P(T|R) and P(L|T), corrispondig to factors Φ(R) and Φ(R, T)
+// First we calculate P(R,T) = Φ(R)Φ(R, T), so we have a factor net (R, T)->(L)
+// Then we have P(L|R, T), to calculate the factor we do the same way and we have Ψ(R, T, L)
 func FactorProduct(A *Factor, B *Factor) {
 	intersection := intersect(A, B)
 	if len(intersection) < 0 {
@@ -52,13 +64,14 @@ func FactorProduct(A *Factor, B *Factor) {
 		nval *= i
 	}
 	C.Values = make([]float64, nval)
-	fmt.Println(mapA, mapB, C)
+	fmt.Println("MAP", mapA, mapB, C)
 	values := make([]int, 0)
 	for i := 0; i < len(C.Values); i++ {
 		values = append(values, i)
 	}
 	assignments := IndexToAssignment(values, C.Numvalues)
-	fmt.Println(assignments)
+	fmt.Println("assignmets", assignments)
+	AssignmentToIndex(assignments, A.Numvalues)
 
 }
 
@@ -84,70 +97,19 @@ func IndexToAssignment(factorvalues []int, factornval []int) *mu.Matrix {
 	}
 	fmt.Println("indexes", indexes)
 	return indexes
-	// fmt.Println("Before", values)
-	// newvct := make([][]int, 0)
-	// myvector := make([][]int, len(values))
-	// for i := 0; i < len(values); i++ {
-	// 	myvector[i] = make([]int, 0)
-	// }
-	// for i := 0; i < len(values); i++ {
-	// 	if i%len(cval) == 0 {
-	// 		myvector[i] = values[:len(cval)]
-	// 	} else {
-	// 		myvector[i] = values[len(cval):]
-	// 	}
-
-	// }
-	// fmt.Println("myvector", myvector)
-	// newvct = append(newvct, values)
-	// newvct = append(newvct, values)
-	// fmt.Println("newvct", newvct)
-	// fmt.Println("cval", cval)
-	// vect := make([]int, 0)
-	// vect = append(vect, 1)
-	// for i := 0; i < len(cval)-1; i++ {
-	// 	k := vect[i] * cval[i]
-	// 	vect = append(vect, k)
-	// }
-	// fmt.Println("vect", vect)
-	// numerator := make([][]int, len(cval))
-	// for l := range numerator {
-	// 	numerator[l] = make([]int, len(values))
-	// }
-	// newnumerator := make([][]int, len(values))
-	// for i := range newnumerator {
-	// 	newnumerator[i] = make([]int, len(cval))
-	// }
-
-	// // [[0 0] [1 0] [2 1] [3 1]]
-	// /*
-	// 	0 0 = 0 / 1  0 / 2
-	// 	1 0 = 1 / 1  1 / 2
-	// 	2 1 = 2 / 1  2 / 2
-	// 	3 1 = 3 / 1  3 / 2
-	// */
-	// fmt.Println("newnumerator", newnumerator)
-	// for i, e := range vect {
-	// 	mult := newvct[i]
-	// 	for j := 0; j < len(mult); j++ {
-	// 		fmt.Println(mult[j], e, "=", mult[j]/e)
-	// 		numerator[i][j] = mult[j] / e
-	// 	}
-	// }
-	// fmt.Println("numerator", numerator)
-	// denominator := make([][]int, len(cval))
-	// for i := range denominator {
-	// 	denominator[i] = make([]int, len(values))
-	// }
-	// for i := 0; i < len(cval); i++ {
-	// 	denominator[i] = cval
-	// }
-	// fmt.Println("denominator", denominator)
 }
 
 func AssignmentToIndex(assignments *mu.Matrix, factorcard []int) {
-	//cardvect := mu.NewVector(factorcard)
+	cardvect := mu.NewVector(factorcard)
+	fmt.Println("CARDVECT", cardvect)
 	//cprodD := mu.Cumprod(1, cardvect)
+	if assignments.M == 1 || assignments.N == 1 {
+		tmp := mu.Cumprod(mu.CreateNewSlice([]int{1}, factorcard[:len(factorcard)-1]))
+		fmt.Println(tmp)
+		// I = cumprod([1, D(1:end - 1)]) * (A(:) - 1) + 1
+	} else {
+		// I = sum(repmat(cumprod([1, D(1:end - 1)]), size(A, 1), 1) .* (A - 1), 2) + 1
+	}
 
 }
 
@@ -209,4 +171,199 @@ func mapIndexValue(f *Factor, C *Factor) []int {
 		}
 	}
 	return pos
+}
+
+//#######################################################################
+func stride(v *Node, vars []*Node, cardinalities []int) int {
+	var stride int
+	var found bool = false
+	for _, variable := range vars {
+		if v == variable {
+			found = true
+		}
+	}
+	if !found {
+		stride = 0
+	} else {
+		stride = 1
+	}
+	for i, cardinality := range cardinalities {
+		if v == vars[i] {
+			break
+		}
+		stride *= cardinality
+	}
+	return stride
+}
+
+func MultiplyFactor(phi1 *FactorV2, phi2 *FactorV2) FactorV2 {
+	// if len(a.Scope) >= len(b.Scope) {
+	// 	phi1 := a
+	// 	phi2 := b
+	// } else {
+	// 	phi1 := b
+	// 	phi2 := a
+	// }
+	variables := phi1.Scope
+	for _, v := range phi2.Scope {
+		if containvar(v, variables) == false {
+			variables = append(variables, v)
+		}
+	}
+	cardinality := phi1.Card
+	for _, v := range phi2.Scope {
+		if containvar(v, phi1.Scope) == false {
+			cardinality = append(cardinality, v.Numvalues)
+		}
+	}
+	var quantityvalues int = 1
+	for i := 0; i < len(cardinality); i++ {
+		quantityvalues *= cardinality[i]
+	}
+	values := make([]float64, quantityvalues)
+	// Algorithm start
+	j := 0
+	k := 0
+	assignment := make(map[*Node]int)
+	for _, v := range variables {
+		assignment[v] = 0
+	}
+	for i := 0; i < quantityvalues; i++ { // for l = 0 ... |X1 U X2|
+		index := 0
+		fmt.Println("j", j, "k", k)
+		for _, v := range variables { // for i = 0 ... |Var(X1 U X2)|
+			index = index + assignment[v]*stride(v, variables, cardinality)
+		}
+		fmt.Println("INDEX", index)
+		values[index] = phi1.CPT[j] * phi2.CPT[k]
+		fmt.Println(values)
+		for idx, variable := range variables {
+			assignment[variable] = assignment[variable] + 1
+			if assignment[variable] == cardinality[idx] {
+				assignment[variable] = 0
+				j = j - (cardinality[idx]-1)*phi1.stride(variable)
+				k = k - (cardinality[idx]-1)*phi2.stride(variable)
+			} else {
+				j = j + phi1.stride(variable)
+				k = k + phi2.stride(variable)
+				break
+			}
+		}
+	}
+	psi := new(FactorV2)
+	psi.Scope = variables
+	psi.CPT = values
+	psi.Card = cardinality
+
+	return *psi
+}
+
+func DivideFactor(phi1 *FactorV2, phi2 *FactorV2) FactorV2 {
+	// if len(a.Scope) >= len(b.Scope) {
+	// 	phi1 := a
+	// 	phi2 := b
+	// } else {
+	// 	phi1 := b
+	// 	phi2 := a
+	// }
+	variables := phi1.Scope
+	for _, v := range phi2.Scope {
+		if containvar(v, variables) == false {
+			variables = append(variables, v)
+		}
+	}
+	cardinality := phi1.Card
+	for _, v := range phi2.Scope {
+		if containvar(v, phi1.Scope) == false {
+			cardinality = append(cardinality, v.Numvalues)
+		}
+	}
+	var quantityvalues int = 1
+	for i := 0; i < len(cardinality); i++ {
+		quantityvalues *= cardinality[i]
+	}
+	values := make([]float64, quantityvalues)
+	// Algorithm start
+	j := 0
+	k := 0
+	assignment := make(map[*Node]int)
+	for _, v := range variables {
+		assignment[v] = 0
+	}
+	for i := 0; i < quantityvalues; i++ { // for l = 0 ... |X1 U X2|
+		index := 0
+		// fmt.Println("j", j, "k", k)
+		for _, v := range variables { // for i = 0 ... |Var(X1 U X2)|
+			index = index + assignment[v]*stride(v, variables, cardinality)
+		}
+		if phi2.CPT[k] == 0 {
+			values[index] = 0
+		} else {
+			values[index] = phi1.CPT[j] / phi2.CPT[k]
+		}
+		fmt.Println(values)
+		for idx, variable := range variables {
+			assignment[variable] = assignment[variable] + 1
+			if assignment[variable] == cardinality[idx] {
+				assignment[variable] = 0
+				j = j - (cardinality[idx]-1)*phi1.stride(variable)
+				k = k - (cardinality[idx]-1)*phi2.stride(variable)
+			} else {
+				j = j + phi1.stride(variable)
+				k = k + phi2.stride(variable)
+				break
+			}
+		}
+	}
+	psi := new(FactorV2)
+	psi.Scope = variables
+	psi.CPT = values
+	psi.Card = cardinality
+
+	return *psi
+}
+
+func containvar(target *Node, list []*Node) bool {
+	found := false
+	for _, variable := range list {
+		if variable == target {
+			found = true
+		}
+	}
+	return found
+}
+
+func (f *FactorV2) stride(variable *Node) int {
+	found := false
+	for v, _ := range f.Strides {
+		if v == variable {
+			found = true
+		}
+	}
+	if f.Strides == nil {
+		f.Strides = make(map[*Node]int)
+	}
+	if !found {
+		f.Strides[variable] = stride(variable, f.Scope, f.Card)
+	}
+	return f.Strides[variable]
+}
+
+func (f *FactorV2) Marginalize(variables []*Node) {
+	for _, variable := range variables {
+		if !containvar(variable, f.Scope) {
+			fmt.Errorf("Variable not in scope")
+		}
+	}
+	newfactor := new(FactorV2)
+	copier.Copy(newfactor, f)
+	oldfactorvar := f.Scope
+	varindex := make([]int, 0)
+	// get indexes of variables to remove
+	for ind, variable := range f.Scope {
+		if containvar(variable, variables) {
+			varindex = append(varindex, ind)
+		}
+	}
+	// for
 }
