@@ -5,7 +5,9 @@ import (
 	"reflect"
 
 	mu "github.com/Petrus97/bif-parser/math-utils"
+	// ts "github.com/gorgonia/tensor"
 	"github.com/jinzhu/copier"
+	ts "gorgonia.org/tensor"
 )
 
 // Factor data type is the product of CPTs of nodes. ex: (X1)-->(X2)<--(X3) Φ(1, 2, 3) = P(X2 | X1, X3)*P(X1)*P(X3)
@@ -187,6 +189,9 @@ func stride(v *Node, vars []*Node, cardinalities []int) int {
 	} else {
 		stride = 1
 	}
+	// for i, j := 0, len(cardinalities)-1; i < j; i, j = i+1, j-1 {
+	// 	cardinalities[i], cardinalities[j] = cardinalities[j], cardinalities[i]
+	// }
 	for i, cardinality := range cardinalities {
 		if v == vars[i] {
 			break
@@ -349,21 +354,55 @@ func (f *FactorV2) stride(variable *Node) int {
 	return f.Strides[variable]
 }
 
-func (f *FactorV2) Marginalize(variables []*Node) {
+func (f *FactorV2) Marginalize(copy bool, variables ...*Node) {
 	for _, variable := range variables {
 		if !containvar(variable, f.Scope) {
 			fmt.Errorf("Variable not in scope")
 		}
 	}
-	newfactor := new(FactorV2)
-	copier.Copy(newfactor, f)
-	oldfactorvar := f.Scope
+	phi := new(FactorV2)
+	if copy {
+		phi = new(FactorV2)
+		copier.Copy(phi, f)
+	}
+
+	// oldfactorvar := f.Scope
 	varindex := make([]int, 0)
+	indextokeep := make([]int, 0)
 	// get indexes of variables to remove
 	for ind, variable := range f.Scope {
+		fmt.Println("STRIDE", f.stride(variable))
 		if containvar(variable, variables) {
 			varindex = append(varindex, ind)
+		} else {
+			indextokeep = append(indextokeep, ind)
 		}
 	}
-	// for
+	for index, variable := range f.Scope {
+		if in, _ := contains(variables, variable); in == false {
+			phi.Scope = append(phi.Scope, variable)
+			phi.Card = append(phi.Card, f.Card[index])
+		}
+	}
+	fmt.Println("Var indexs", varindex)
+	fmt.Println("Index to keep", indextokeep)
+	fmt.Println("OLD", f)
+	fmt.Println("NEW", phi)
+	phi.Strides = map[*Node]int{}
+	for _, v := range variables {
+		phi.Strides[v] = f.stride(v)
+	}
+	fmt.Println(phi.Strides)
+	nvalues := 1
+	for _, card := range phi.Card {
+		nvalues *= card
+	}
+	// phi.CPT = make([]float64, nvalues)
+	tensor := ts.New(ts.WithBacking(f.CPT), ts.WithShape(f.Card...))
+
+	summed, _ := ts.Sum(tensor, varindex...)
+	tmptmp := summed.Data().([]float64)
+	phi.CPT = tmptmp
+
+	fmt.Println("NEW", phi)
 }

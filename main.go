@@ -74,6 +74,7 @@ func main() {
 	fmt.Println("F V2 Holmes", holmesfact)
 	fmt.Println("Icy-Holmes", ih)
 
-	h := bn.DivideFactor(&ih, icyfact)
-	fmt.Println(h)
+	ih.Marginalize(false, holmes)
+	// h := bn.DivideFactor(&ih, holmesfact)
+	// fmt.Println(h)
 }
