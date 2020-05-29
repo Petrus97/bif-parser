@@ -41,6 +41,15 @@ func CreateFactor(n *Node) *Factor {
 	return &factor
 }
 
+func CreateFactorV2(n *Node) *FactorV2 {
+	factor := new(FactorV2)
+	factor.CPT = n.CPT
+	factor.Card = append(factor.Card, n.Numvalues)
+	factor.Scope = append(factor.Scope, n)
+	factor.Scope = append(factor.Scope, n.Parents...)
+	return factor
+}
+
 // FactorProduct permits to calculate Ψ(R, T, L), consider the net (R)->(T)->(L)
 // We have to calculate multiple joins, We have P(R), P(T|R) and P(L|T), corrispondig to factors Φ(R) and Φ(R, T)
 // First we calculate P(R,T) = Φ(R)Φ(R, T), so we have a factor net (R, T)->(L)
