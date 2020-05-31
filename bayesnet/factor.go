@@ -47,6 +47,13 @@ func CreateFactorV2(n *Node) *FactorV2 {
 	factor.Card = append(factor.Card, n.Numvalues)
 	factor.Scope = append(factor.Scope, n)
 	factor.Scope = append(factor.Scope, n.Parents...)
+	factor.Strides = map[*Node]int{}
+	factor.Strides[n] = 1
+	s := n.Numvalues
+	for _, v := range n.Parents {
+		factor.Strides[v] = s
+		s *= v.Numvalues
+	}
 	return factor
 }
 

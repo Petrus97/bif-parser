@@ -34,14 +34,16 @@ func main() {
 	fmt.Println("WR", wr)
 	fmt.Println("rain", rainfact)
 	fmt.Println("holmes", holmesfact)
-	rh := bn.MultiplyFactor(rainfact, holmesfact)
-	fmt.Println("RH", rh)
-	sh := bn.MultiplyFactor(sprinklerfact, holmesfact)
-	fmt.Println("SH", sh)
-	hrs := bn.MultiplyFactor(&rh, &sh)
-	fmt.Println("HRS", hrs)
+	rs := bn.MultiplyFactor(sprinklerfact, rainfact)
+	fmt.Println("RS", rs)
+	hrs := bn.MultiplyFactor(&rs, holmesfact)
 
-	// hrs.Marginalize(false, sprinkler, holmes)
+	fmt.Println("HRS", hrs)
+	sepr1 := bn.DivideFactor(&wr, rainfact)
+	fmt.Println("SEP_R1", sepr1)
+	sper2 := bn.DivideFactor(&hrs, rainfact)
+	fmt.Println("SEPR2", sper2)
+	// hrs.Marginalize(false, holmes, sprinkler)
 
 	// fmt.Println("WR", wr)
 
@@ -57,10 +59,14 @@ func main() {
 	// fmt.Println(hfact)
 	// bn.FactorProduct(ifact, hfact)
 
+	// icy := myNet.GetNode("Icy")
+
 	// icyfact := new(bn.FactorV2)
 	// icyfact.CPT = icy.CPT
 	// icyfact.Scope = append(icyfact.Scope, icy)
 	// icyfact.Card = append(icyfact.Card, icy.Numvalues)
+
+	// holmes := myNet.GetNode("Holmes")
 
 	// holmesfact := new(bn.FactorV2)
 	// holmesfact.CPT = holmes.CPT
@@ -71,15 +77,32 @@ func main() {
 	// 	holmesfact.Card = append(holmesfact.Card, p.Numvalues)
 	// }
 
+	// watson := myNet.GetNode("Watson")
+	// watsonfact := new(bn.FactorV2)
+	// watsonfact.CPT = holmes.CPT
+	// watsonfact.Scope = append(watsonfact.Scope, watson)
+	// watsonfact.Scope = append(watsonfact.Scope, watson.Parents...)
+	// watsonfact.Card = append(watsonfact.Card, watson.Numvalues)
+	// for _, p := range watson.Parents {
+	// 	watsonfact.Card = append(watsonfact.Card, p.Numvalues)
+	// }
+
 	// fmt.Println("F V2 Icy", icyfact)
 	// fmt.Println("F V2 Holmes", holmesfact)
+	// fmt.Println("F V2 Watson", watsonfact)
 
 	// ih := bn.MultiplyFactor(icyfact, holmesfact)
 	// fmt.Println("F V2 Icy", icyfact)
 	// fmt.Println("F V2 Holmes", holmesfact)
 	// fmt.Println("Icy-Holmes", ih)
 
-	// ih.Marginalize(false, holmes)
+	// iw := bn.MultiplyFactor(icyfact, watsonfact)
+	// fmt.Println("F V2 Icy", icyfact)
+	// fmt.Println("F V2 Watson", watsonfact)
+	// fmt.Println("Icy-Watson", iw)
+
+	// ih.Marginalize(false, icy)
+	// iw.Marginalize(false, watson)
 	// h := bn.DivideFactor(&ih, holmesfact)
 	// fmt.Println(h)
 }
