@@ -82,13 +82,13 @@ func FactorProduct(A *Factor, B *Factor) {
 		nval *= i
 	}
 	C.Values = make([]float64, nval)
-	fmt.Println("MAP", mapA, mapB, C)
+	// fmt.Println("MAP", mapA, mapB, C)
 	values := make([]int, 0)
 	for i := 0; i < len(C.Values); i++ {
 		values = append(values, i)
 	}
 	assignments := IndexToAssignment(values, C.Numvalues)
-	fmt.Println("assignmets", assignments)
+	// fmt.Println("assignmets", assignments)
 	AssignmentToIndex(assignments, A.Numvalues)
 
 }
@@ -131,6 +131,16 @@ func AssignmentToIndex(assignments *mu.Matrix, factorcard []int) {
 
 }
 
+func intersectV2(A *FactorV2, B *FactorV2) []*Node {
+	intersection := make([]*Node, 0)
+	for _, node := range A.Scope {
+		if containsNodeV2(B, node) {
+			intersection = append(intersection, node)
+		}
+	}
+	return intersection
+}
+
 func intersect(A *Factor, B *Factor) []*Node {
 	intersection := make([]*Node, 0)
 	for _, node := range A.Var {
@@ -139,6 +149,15 @@ func intersect(A *Factor, B *Factor) []*Node {
 		}
 	}
 	return intersection
+}
+
+func containsNodeV2(f *FactorV2, n *Node) bool {
+	for _, node := range f.Scope {
+		if node == n {
+			return true
+		}
+	}
+	return false
 }
 
 func containsNode(f *Factor, n *Node) bool {
@@ -181,7 +200,7 @@ func contains(a interface{}, e interface{}) (bool, int) {
 func mapIndexValue(f *Factor, C *Factor) []int {
 	pos := make([]int, 0)
 	for _, variable := range f.Var {
-		fmt.Println(variable)
+		// fmt.Println(variable)
 		for index, cvar := range C.Var {
 			if cvar == variable {
 				pos = append(pos, index)
@@ -217,14 +236,7 @@ func stride(v *Node, vars []*Node, cardinalities []int) int {
 	return stride
 }
 
-func MultiplyFactor(phi1 *FactorV2, phi2 *FactorV2) FactorV2 {
-	// if len(a.Scope) >= len(b.Scope) {
-	// 	phi1 := a
-	// 	phi2 := b
-	// } else {
-	// 	phi1 := b
-	// 	phi2 := a
-	// }
+func MultiplyFactor(phi1 *FactorV2, phi2 *FactorV2, retcopy bool) *FactorV2 {
 	variables := phi1.Scope
 	for _, v := range phi2.Scope {
 		if containvar(v, variables) == false {
@@ -251,13 +263,13 @@ func MultiplyFactor(phi1 *FactorV2, phi2 *FactorV2) FactorV2 {
 	}
 	for i := 0; i < quantityvalues; i++ { // for l = 0 ... |X1 U X2|
 		index := 0
-		fmt.Println("j", j, "k", k)
+		// fmt.Println("j", j, "k", k)
 		for _, v := range variables { // for i = 0 ... |Var(X1 U X2)|
 			index = index + assignment[v]*stride(v, variables, cardinality)
 		}
-		fmt.Println("INDEX", index)
+		// fmt.Println("INDEX", index)
 		values[index] = phi1.CPT[j] * phi2.CPT[k]
-		fmt.Println(values)
+		// fmt.Println(values)
 		for idx, variable := range variables {
 			assignment[variable] = assignment[variable] + 1
 			if assignment[variable] == cardinality[idx] {
@@ -275,11 +287,18 @@ func MultiplyFactor(phi1 *FactorV2, phi2 *FactorV2) FactorV2 {
 	psi.Scope = variables
 	psi.CPT = values
 	psi.Card = cardinality
-
-	return *psi
+	psi.Strides = map[*Node]int{}
+	for _, v := range psi.Scope {
+		psi.Strides[v] = stride(v, psi.Scope, psi.Card)
+	}
+	if !retcopy {
+		copier.Copy(phi1, psi)
+		return nil
+	}
+	return psi
 }
 
-func DivideFactor(phi1 *FactorV2, phi2 *FactorV2) FactorV2 {
+func DivideFactor(phi1 *FactorV2, phi2 *FactorV2, retcopy bool) *FactorV2 {
 	// if len(a.Scope) >= len(b.Scope) {
 	// 	phi1 := a
 	// 	phi2 := b
@@ -322,7 +341,7 @@ func DivideFactor(phi1 *FactorV2, phi2 *FactorV2) FactorV2 {
 		} else {
 			values[index] = phi1.CPT[j] / phi2.CPT[k]
 		}
-		fmt.Println(values)
+		// fmt.Println(values)
 		for idx, variable := range variables {
 			assignment[variable] = assignment[variable] + 1
 			if assignment[variable] == cardinality[idx] {
@@ -340,8 +359,15 @@ func DivideFactor(phi1 *FactorV2, phi2 *FactorV2) FactorV2 {
 	psi.Scope = variables
 	psi.CPT = values
 	psi.Card = cardinality
-
-	return *psi
+	psi.Strides = map[*Node]int{}
+	for _, v := range psi.Scope {
+		psi.Strides[v] = stride(v, psi.Scope, psi.Card)
+	}
+	if !retcopy {
+		copier.Copy(phi1, psi)
+		return nil
+	}
+	return psi
 }
 
 func containvar(target *Node, list []*Node) bool {
@@ -356,7 +382,7 @@ func containvar(target *Node, list []*Node) bool {
 
 func (f *FactorV2) stride(variable *Node) int {
 	found := false
-	for v, _ := range f.Strides {
+	for v := range f.Strides {
 		if v == variable {
 			found = true
 		}
@@ -370,24 +396,20 @@ func (f *FactorV2) stride(variable *Node) int {
 	return f.Strides[variable]
 }
 
-func (f *FactorV2) Marginalize(copy bool, variables ...*Node) {
+func (f *FactorV2) Marginalize(retcopy bool, variables ...*Node) *FactorV2 {
 	for _, variable := range variables {
 		if !containvar(variable, f.Scope) {
 			fmt.Errorf("Variable not in scope")
 		}
 	}
 	phi := new(FactorV2)
-	if copy {
-		phi = new(FactorV2)
-		copier.Copy(phi, f)
-	}
 
 	// oldfactorvar := f.Scope
 	varindex := make([]int, 0)
 	indextokeep := make([]int, 0)
 	// get indexes of variables to remove
 	for ind, variable := range f.Scope {
-		fmt.Println("STRIDE", f.stride(variable))
+		// fmt.Println("STRIDE", f.stride(variable))
 		if containvar(variable, variables) {
 			varindex = append(varindex, ind)
 		} else {
@@ -400,25 +422,42 @@ func (f *FactorV2) Marginalize(copy bool, variables ...*Node) {
 			phi.Card = append(phi.Card, f.Card[index])
 		}
 	}
-	fmt.Println("Var indexs", varindex)
-	fmt.Println("Index to keep", indextokeep)
-	fmt.Println("OLD", f)
-	fmt.Println("NEW", phi)
+	// fmt.Println("Var indexs", varindex)
+	// fmt.Println("Index to keep", indextokeep)
+	// fmt.Println("OLD", f)
+	// fmt.Println("NEW", phi)
 	phi.Strides = map[*Node]int{}
-	for _, v := range variables {
+	for _, v := range phi.Scope {
 		phi.Strides[v] = f.stride(v)
 	}
-	fmt.Println(phi.Strides)
+	// fmt.Println(phi.Strides)
 	nvalues := 1
 	for _, card := range phi.Card {
 		nvalues *= card
 	}
 	// phi.CPT = make([]float64, nvalues)
 	tensor := ts.New(ts.WithBacking(f.CPT), ts.WithShape(f.Card...))
+	fmt.Println(tensor)
+	fmt.Println(varindex)
+	summed, _ := ts.Sum(tensor, indextokeep...)
+	fmt.Println(summed)
+	phi.CPT = summed.Data().([]float64)
 
-	summed, _ := ts.Sum(tensor, varindex...)
-	tmptmp := summed.Data().([]float64)
-	phi.CPT = tmptmp
+	if !retcopy {
+		copier.Copy(f, phi)
+		return nil
+	}
+	return phi
 
-	fmt.Println("NEW", phi)
+	// fmt.Println("NEW", phi)
+}
+
+func (f *FactorV2) Normalize() {
+	var sum float64 = 0
+	for _, value := range f.CPT {
+		sum += value
+	}
+	for i, value := range f.CPT {
+		f.CPT[i] = value / sum
+	}
 }

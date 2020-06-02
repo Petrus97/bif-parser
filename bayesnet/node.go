@@ -42,3 +42,20 @@ func (n *Node) GetPotential() {
 	}
 	fmt.Println(pot)
 }
+
+func difference(alist []*Node, blist []*Node) []*Node {
+	// A - B
+	clist := make([]*Node, 0)
+	for _, n := range alist {
+		if ok := containvar(n, blist); ok == false {
+			clist = append(clist, n)
+		}
+	}
+	for _, n := range blist {
+		if ok := containvar(n, alist); ok == false {
+			clist = append(clist, n)
+		}
+	}
+	return clist
+
+}
