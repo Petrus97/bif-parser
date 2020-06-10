@@ -5,18 +5,19 @@ import (
 	"reflect"
 
 	mu "github.com/Petrus97/bif-parser/math-utils"
-	// ts "github.com/gorgonia/tensor"
 	"github.com/jinzhu/copier"
 	ts "gorgonia.org/tensor"
 )
 
 // Factor data type is the product of CPTs of nodes. ex: (X1)-->(X2)<--(X3) Φ(1, 2, 3) = P(X2 | X1, X3)*P(X1)*P(X3)
+// This is for a vectorized version. deprecated.
 type Factor struct {
 	Var       []*Node
 	Numvalues []int
 	Values    []float64
 }
 
+// FactorV2 data type is the product of CPTs of nodes. ex: (X1)-->(X2)<--(X3) Φ(1, 2, 3) = P(X2 | X1, X3)*P(X1)*P(X3)
 type FactorV2 struct {
 	Scope   []*Node
 	Card    []int
@@ -25,6 +26,7 @@ type FactorV2 struct {
 }
 
 // CreateFactor takes in input a node of bayesian network and build a factor
+// This is for a vectorized version. deprecated.
 func CreateFactor(n *Node) *Factor {
 	factor := Factor{
 		Var:       make([]*Node, 0),
@@ -41,6 +43,7 @@ func CreateFactor(n *Node) *Factor {
 	return &factor
 }
 
+// CreateFactorV2 takes in input a node of bayesian network and build a factor
 func CreateFactorV2(n *Node) *FactorV2 {
 	factor := new(FactorV2)
 	factor.CPT = n.CPT
@@ -93,6 +96,7 @@ func FactorProduct(A *Factor, B *Factor) {
 
 }
 
+// IndexToAssignment calculate var indexes for multiply factor. deprecated.
 func IndexToAssignment(factorvalues []int, factornval []int) *mu.Matrix {
 	valuevector := mu.NewVector(factorvalues)
 	nvalvector := mu.NewVector(factornval)
@@ -117,6 +121,7 @@ func IndexToAssignment(factorvalues []int, factornval []int) *mu.Matrix {
 	return indexes
 }
 
+// AssignmentToIndex get var indexes of assignments in factor. deprecated.
 func AssignmentToIndex(assignments *mu.Matrix, factorcard []int) {
 	cardvect := mu.NewVector(factorcard)
 	fmt.Println("CARDVECT", cardvect)
@@ -210,7 +215,7 @@ func mapIndexValue(f *Factor, C *Factor) []int {
 	return pos
 }
 
-//#######################################################################
+// calculate stride of variabile in var list, see p.359 Probabilist Graphical Models. Koller, Friedman.
 func stride(v *Node, vars []*Node, cardinalities []int) int {
 	var stride int
 	var found bool = false
@@ -236,6 +241,7 @@ func stride(v *Node, vars []*Node, cardinalities []int) int {
 	return stride
 }
 
+// MultiplyFactor takes in input two factor and multiply them, see p.359 Probabilist Graphical Models. Koller, Friedman. Algorithm 10.A.1
 func MultiplyFactor(phi1 *FactorV2, phi2 *FactorV2, retcopy bool) *FactorV2 {
 	variables := phi1.Scope
 	for _, v := range phi2.Scope {
@@ -298,14 +304,8 @@ func MultiplyFactor(phi1 *FactorV2, phi2 *FactorV2, retcopy bool) *FactorV2 {
 	return psi
 }
 
+// DivideFactor takes in input two factor and divide them, see p.359 Probabilist Graphical Models. Koller, Friedman. Algorithm 10.A.1
 func DivideFactor(phi1 *FactorV2, phi2 *FactorV2, retcopy bool) *FactorV2 {
-	// if len(a.Scope) >= len(b.Scope) {
-	// 	phi1 := a
-	// 	phi2 := b
-	// } else {
-	// 	phi1 := b
-	// 	phi2 := a
-	// }
 	variables := phi1.Scope
 	for _, v := range phi2.Scope {
 		if containvar(v, variables) == false {
@@ -396,6 +396,7 @@ func (f *FactorV2) stride(variable *Node) int {
 	return f.Strides[variable]
 }
 
+// Marginalize one ore more variables from a factor
 func (f *FactorV2) Marginalize(retcopy bool, variables ...*Node) *FactorV2 {
 	for _, variable := range variables {
 		if !containvar(variable, f.Scope) {
@@ -452,6 +453,7 @@ func (f *FactorV2) Marginalize(retcopy bool, variables ...*Node) *FactorV2 {
 	// fmt.Println("NEW", phi)
 }
 
+// Normalize factor CPT
 func (f *FactorV2) Normalize() {
 	var sum float64 = 0
 	for _, value := range f.CPT {
