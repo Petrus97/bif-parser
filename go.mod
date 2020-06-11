@@ -6,6 +6,7 @@ require (
 	github.com/adam-hanna/arrayOperations v0.2.6
 	github.com/chewxy/math32 v1.0.5 // indirect
 	github.com/deckarep/golang-set v1.7.1
+	github.com/fatih/color v1.9.0
 	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/golang/protobuf v1.4.2 // indirect
 	github.com/google/flatbuffers v1.12.0 // indirect

@@ -341,6 +341,7 @@ func DivideFactor(phi1 *FactorV2, phi2 *FactorV2, retcopy bool) *FactorV2 {
 		} else {
 			values[index] = phi1.CPT[j] / phi2.CPT[k]
 		}
+		fmt.Println(phi1.CPT[j], "/", phi2.CPT[k], "=", phi1.CPT[j]/phi2.CPT[k])
 		// fmt.Println(values)
 		for idx, variable := range variables {
 			assignment[variable] = assignment[variable] + 1
@@ -396,8 +397,9 @@ func (f *FactorV2) stride(variable *Node) int {
 	return f.Strides[variable]
 }
 
-// Marginalize one ore more variables from a factor
+// Marginalize one ore more variables from a factor, i want to return a factor with summed out variables in input
 func (f *FactorV2) Marginalize(retcopy bool, variables ...*Node) *FactorV2 {
+	fmt.Println("Marginalizing ")
 	for _, variable := range variables {
 		if !containvar(variable, f.Scope) {
 			fmt.Errorf("Variable not in scope")
@@ -405,9 +407,9 @@ func (f *FactorV2) Marginalize(retcopy bool, variables ...*Node) *FactorV2 {
 	}
 	phi := new(FactorV2)
 
-	// oldfactorvar := f.Scope
 	varindex := make([]int, 0)
 	indextokeep := make([]int, 0)
+
 	// get indexes of variables to remove
 	for ind, variable := range f.Scope {
 		// fmt.Println("STRIDE", f.stride(variable))
@@ -417,6 +419,8 @@ func (f *FactorV2) Marginalize(retcopy bool, variables ...*Node) *FactorV2 {
 			indextokeep = append(indextokeep, ind)
 		}
 	}
+
+	// for every variable not to remove, not contained in
 	for index, variable := range f.Scope {
 		if in, _ := contains(variables, variable); in == false {
 			phi.Scope = append(phi.Scope, variable)
@@ -424,14 +428,14 @@ func (f *FactorV2) Marginalize(retcopy bool, variables ...*Node) *FactorV2 {
 		}
 	}
 	// fmt.Println("Var indexs", varindex)
-	// fmt.Println("Index to keep", indextokeep)
-	// fmt.Println("OLD", f)
+	fmt.Println("Index to keep", indextokeep)
+	fmt.Println("card", phi.Card)
 	// fmt.Println("NEW", phi)
 	phi.Strides = map[*Node]int{}
 	for _, v := range phi.Scope {
-		phi.Strides[v] = f.stride(v)
+		phi.Strides[v] = 1 // f.stride(v)
 	}
-	// fmt.Println(phi.Strides)
+	fmt.Println("PHI", phi)
 	nvalues := 1
 	for _, card := range phi.Card {
 		nvalues *= card
@@ -440,7 +444,7 @@ func (f *FactorV2) Marginalize(retcopy bool, variables ...*Node) *FactorV2 {
 	tensor := ts.New(ts.WithBacking(f.CPT), ts.WithShape(f.Card...))
 	fmt.Println(tensor)
 	fmt.Println(varindex)
-	summed, _ := ts.Sum(tensor, indextokeep...)
+	summed, _ := ts.Sum(tensor, varindex...)
 	fmt.Println(summed)
 	phi.CPT = summed.Data().([]float64)
 

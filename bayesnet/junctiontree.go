@@ -1,6 +1,10 @@
 package bayesnet
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/fatih/color"
+)
 
 /* (V)----|S|----(W)
  *
@@ -73,6 +77,7 @@ func NewSeparator(f *FactorV2, left *Clique, right *Clique) *Separator {
 	for _, fact := range factors {
 		MultiplyFactor(sep.Table, fact, false)
 	}
+	fmt.Println("my separator", sep)
 	return &sep
 }
 
@@ -80,7 +85,8 @@ func (c *Clique) getSeparatorBetween(other *Clique) *Separator {
 	// fmt.Println("c", c.Separators)
 	// fmt.Println("othe", other.Separators)
 	for _, sep := range c.Separators {
-		if (sep.LeftClique == other && sep.RightClique == c) || (sep.RightClique == other && sep.LeftClique == c) {
+		// fmt.Println("sep", sep.LeftClique.Name, sep.RightClique.Name, c.Name, other.Name)
+		if (sep.LeftClique.Name == other.Name && sep.RightClique.Name == c.Name) || (sep.RightClique.Name == other.Name && sep.LeftClique.Name == c.Name) {
 			return sep
 		}
 	}
@@ -88,8 +94,10 @@ func (c *Clique) getSeparatorBetween(other *Clique) *Separator {
 }
 
 func (jt *JunctionTree) collectEvidence(prev *Clique, actual *Clique, sep *Separator) {
+	color.Green("Collect evidence")
 	actual.Visited = true
 	for _, neighbour := range actual.Neighbours {
+		fmt.Println(actual.Name, neighbour.Name)
 		var sep *Separator
 		sep = neighbour.getSeparatorBetween(actual)
 		// fmt.Println(sep)
@@ -105,11 +113,11 @@ func (jt *JunctionTree) collectEvidence(prev *Clique, actual *Clique, sep *Separ
 }
 
 func (jt *JunctionTree) distributeEvidence(c *Clique) {
+	color.Green("Distribute evidence")
 	c.Visited = true
 	for _, neighbour := range c.Neighbours {
 		var sep *Separator
 		sep = neighbour.getSeparatorBetween(c)
-		// fmt.Println(sep)
 		if sep != nil {
 			if neighbour.Visited == false {
 				jt.passMessage(c, neighbour, sep)
@@ -121,18 +129,29 @@ func (jt *JunctionTree) distributeEvidence(c *Clique) {
 }
 
 func (jt *JunctionTree) passMessage(from *Clique, to *Clique, sep *Separator) {
+	color.Green("Pass Message")
 	fmt.Println("passign message from", from.Name, "to", to.Name)
 	m := difference(from.Variables, sep.Variables)
-	for _, v := range m {
-		fmt.Println(v.Name)
+	color.Red("Var to remove:")
+	for i, v := range m {
+		fmt.Print(i, ". ", v.Name, " ")
 	}
-	fmt.Println(from.Table)
-	new := from.Table.Marginalize(true, m...)
+	fmt.Print("\n")
+	fmt.Println("from", from.Name, from.Table)
+	new := from.Table.Marginalize(true, m...) // t*_s sep table
+	color.Red("Var in new: ")
+	for i, v := range new.Scope {
+		fmt.Print(i, ". ", v.Name, " ")
+	}
+	fmt.Print("\n")
 	fmt.Println("NEW", new)
-	MultiplyFactor(to.Table, new, false)
-	fmt.Println(to.Table)
-	DivideFactor(to.Table, sep.Table, false)
-	fmt.Println(to.Table)
+	// t*_w x (t*_s / t_S)
+	tmp := DivideFactor(new, sep.Table, true) // t*_s / t_s
+	MultiplyFactor(to.Table, tmp, false)      // t*_w x (t*_s / t_s)
+	// MultiplyFactor(to.Table, new, false)      // t*_w x (t*_s / t_s)
+	// fmt.Println("to", to.Name, to.Table)
+	// DivideFactor(to.Table, sep.Table, false)
+	// fmt.Println("to", to.Name, to.Table)
 	sep.Table = new
 	fmt.Println("sep", sep.Table)
 	// for _, v := range from.Table.Scope {
@@ -173,22 +192,40 @@ func NewClique(f *FactorV2, name string) *Clique {
 }
 
 func (jt *JunctionTree) EnterEvidence(n *Node, values []float64) {
+	color.Yellow("EnterEvidence")
+	fmt.Println("Evidence on", n.Name)
 	for _, c := range jt.Cliques {
 		if ok := containsNodeV2(c.Table, n); ok == true {
-			EnterEvidenceFactor(c.Table, n, values)
+			fmt.Println("Entering evidence in", c.Name)
+			err := EnterEvidenceFactor(c.Table, n, values)
+			if err != nil {
+				fmt.Println(err)
+			}
 		}
 	}
 }
 
 func EnterEvidenceFactor(old *FactorV2, n *Node, values []float64) error {
+	color.Yellow("Enter evidence factor")
 	ev := n
-	if len(values) != len(n.CPT) {
-		return fmt.Errorf("Evidence list does not match len of CPT values")
+	if len(values) != n.Numvalues {
+		return fmt.Errorf("Evidence list: %d does not match numvalues: %d", len(values), len(n.CPT))
 	}
-	ev.CPT = values
+	// ev.CPT = values
 	evfact := CreateFactorV2(ev)
-	fmt.Println(evfact)
-	fmt.Println(old)
+	j := 0
+	for i := 0; i < len(evfact.CPT); i++ {
+		if j < len(values) {
+			evfact.CPT[i] = values[j]
+		} else {
+			j = 0
+			evfact.CPT[i] = values[j]
+		}
+		j++
+	}
+
+	fmt.Println("ev", evfact)
+	fmt.Println("old", old)
 	MultiplyFactor(old, evfact, false)
 	// stride := old.Strides[n]
 	// fmt.Println(n.Name, stride)
@@ -200,20 +237,23 @@ func EnterEvidenceFactor(old *FactorV2, n *Node, values []float64) error {
 	// 	}
 	// }
 	fmt.Println("AFTER EV", old)
+	// old.Normalize()
+	// fmt.Println("After Ev normalized", old)
 	return nil
 }
 
 func (c *Clique) AddSeparator(sep *Separator) {
-	fmt.Println("adding", sep)
+	fmt.Println("adding separator...", sep)
 	c.Separators = append(c.Separators, sep)
 	if c == sep.LeftClique {
 		c.Neighbours = append(c.Neighbours, sep.RightClique)
 	} else {
-		c.Neighbours = append(c.Neighbours, sep.RightClique)
+		c.Neighbours = append(c.Neighbours, sep.LeftClique)
 	}
 }
 
 func (jt *JunctionTree) Propagate() {
+	color.Green("Propagate")
 	for _, c := range jt.Cliques {
 		c.Visited = false
 	}
@@ -225,6 +265,7 @@ func (jt *JunctionTree) Propagate() {
 	// Distribute Evidence
 	jt.distributeEvidence(jt.Root)
 	// Normalize
+	color.Green("Normalizing")
 	for _, c := range jt.Cliques {
 		c.Table.Normalize()
 	}
