@@ -38,16 +38,19 @@ type JunctionTree struct {
 	Separators []*Separator
 }
 
+// AddCliques to junction tree
 func (jt *JunctionTree) AddCliques(cliques ...*Clique) {
 	for _, clique := range cliques {
 		jt.Cliques = append(jt.Cliques, clique)
 	}
 }
 
+// SetRoot set the first clique in junction tree as root
 func (jt *JunctionTree) SetRoot() {
 	jt.Root = jt.Cliques[0]
 }
 
+// AddSeparators to junction tree
 func (jt *JunctionTree) AddSeparators(separators ...*Separator) {
 	for _, sep := range separators {
 		jt.Separators = append(jt.Separators, sep)
@@ -56,6 +59,7 @@ func (jt *JunctionTree) AddSeparators(separators ...*Separator) {
 	}
 }
 
+// NewSeparator create a new separator from factor table, assign right and left clique
 func NewSeparator(f *FactorV2, left *Clique, right *Clique) *Separator {
 	sep := Separator{
 		Table:       new(FactorV2),
@@ -154,28 +158,7 @@ func (jt *JunctionTree) passMessage(from *Clique, to *Clique, sep *Separator) {
 	// fmt.Println("to", to.Name, to.Table)
 	sep.Table = new
 	fmt.Println("sep", sep.Table)
-	// for _, v := range from.Table.Scope {
-	// 	fmt.Println(v.Name)
-	// }
-	// strides := make([]int, 0)
-	// for _, v := range from.Table.Scope {
-	// 	strides = append(strides, to.Table.Strides[v])
-	// }
-	// fmt.Println(to.Table)
-	// fmt.Println(strides)
-	// for _, s := range strides {
-	// 	for i := range to.Table.CPT {
-	// 		if i%s == 0 {
-	// 			to.Table.CPT[i] *= from.Table.CPT[1]
-	// 		} else {
-	// 			to.Table.CPT[i] *= from.Table.CPT[0]
-	// 		}
-	// 	}
-	// }
-	// fmt.Println(to.Table)
-	// fmt.Println(sep.Table)
-	// Multiply to.Table with sep.Table using from.Table strides
-	// Divide to.Table with sep.Table using sep.Table strides
+	color.HiMagenta("HRS", jt.Cliques[1].Table)
 
 }
 
@@ -191,6 +174,7 @@ func NewClique(f *FactorV2, name string) *Clique {
 	return &clique
 }
 
+// EnterEvidence in in a tree
 func (jt *JunctionTree) EnterEvidence(n *Node, values []float64) {
 	color.Yellow("EnterEvidence")
 	fmt.Println("Evidence on", n.Name)
@@ -205,6 +189,7 @@ func (jt *JunctionTree) EnterEvidence(n *Node, values []float64) {
 	}
 }
 
+// EnterEvidenceFactor add evidence to clique tables (factor)
 func EnterEvidenceFactor(old *FactorV2, n *Node, values []float64) error {
 	color.Yellow("Enter evidence factor")
 	ev := n
@@ -226,22 +211,17 @@ func EnterEvidenceFactor(old *FactorV2, n *Node, values []float64) error {
 
 	fmt.Println("ev", evfact)
 	fmt.Println("old", old)
-	MultiplyFactor(old, evfact, false)
-	// stride := old.Strides[n]
-	// fmt.Println(n.Name, stride)
-	// for i := range old.CPT {
-	// 	if i%stride == 0 {
-	// 		old.CPT[i] *= ev.CPT[1]
-	// 	} else {
-	// 		old.CPT[i] *= ev.CPT[0]
-	// 	}
-	// }
-	fmt.Println("AFTER EV", old)
-	// old.Normalize()
-	// fmt.Println("After Ev normalized", old)
+	for i := 0; i < len(ev.CPT); i++ {
+		old.CPT[i] *= ev.CPT[i]
+	}
+	// MultiplyFactor(old, evfact, false)
+
+	color.Cyan("AFTER EV", old)
+
 	return nil
 }
 
+// AddSeparator to clique
 func (c *Clique) AddSeparator(sep *Separator) {
 	fmt.Println("adding separator...", sep)
 	c.Separators = append(c.Separators, sep)
@@ -252,6 +232,7 @@ func (c *Clique) AddSeparator(sep *Separator) {
 	}
 }
 
+// Propagate perform Hugin algorithm
 func (jt *JunctionTree) Propagate() {
 	color.Green("Propagate")
 	for _, c := range jt.Cliques {
@@ -262,8 +243,10 @@ func (jt *JunctionTree) Propagate() {
 	for _, c := range jt.Cliques {
 		c.Visited = false
 	}
+	color.HiMagenta("HRS", jt.Cliques[1].Table.CPT)
 	// Distribute Evidence
 	jt.distributeEvidence(jt.Root)
+	color.HiMagenta("HRS", jt.Cliques[1].Table.CPT)
 	// Normalize
 	color.Green("Normalizing")
 	for _, c := range jt.Cliques {
@@ -271,42 +254,5 @@ func (jt *JunctionTree) Propagate() {
 	}
 	for _, s := range jt.Separators {
 		s.Table.Normalize()
-	}
-}
-
-// func (c *Clique) AddVariables(nodes ...*Node) {
-// 	for _, node := range nodes {
-// 		c.Variables = append(c.Variables, node)
-// 	}
-// }
-
-// InitIcyRoadJT initialize junctiontree relative to icy_roads.bif
-// func InitIcyRoadJT(bn *BN) (jt *JunctionTree) {
-// 	iw := Clique{
-// 		Name:       "IW",
-// 		Variables:  make([]*Node, 0),
-// 		Neighbours: make([]*Clique, 0),
-// 		Separators: make([]*Separator, 0),
-// 		Table:      make([][]float64, 0),
-// 	}
-// 	iw.AddVariables(bn.GetNode("Icy"), bn.GetNode("Watson"))
-// 	ih := Clique{
-// 		Name:       "IH",
-// 		Variables:  make([]*Node, 0),
-// 		Neighbours: make([]*Clique, 0),
-// 		Separators: make([]*Separator, 0),
-// 		Table:      make([][]float64, 0),
-// 	}
-// 	ih.AddVariables(bn.GetNode("Icy"), bn.GetNode("Holmes"))
-// 	var junc JunctionTree
-// 	return &junc
-// }
-
-func (bn *BN) MatchDomains() {
-	for _, n := range bn.Nodes {
-		matches := map[interface{}]float64{}
-		for i := 0; i < len(n.CPT); i++ {
-			matches[n.Domain[i]] = n.CPT[i]
-		}
 	}
 }

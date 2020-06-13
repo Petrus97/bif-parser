@@ -89,38 +89,11 @@ func TestDivideFactor(t *testing.T) {
 	fmt.Println("phi2", phi2)
 	fmt.Println("ret", ret)
 
+	expected := []float64{0.625, 0.25, 0., 0., 0.5, 0.75}
+	for i := 0; i < len(expected); i++ {
+		if ret.CPT[i] != expected[i] {
+			t.Error("Not equal")
+		}
+	}
+
 }
-
-// func TestDivideFactorV2(t *testing.T) {
-// 	fmt.Println("Test Divide Factor")
-// 	node1 := new(Node)
-// 	node1.Name = "1"
-// 	node1.Numvalues = 2
-
-// 	node2 := new(Node)
-// 	node2.Name = "2"
-// 	node2.Numvalues = 3
-
-// 	node3 := new(Node)
-// 	node3.Name = "2"
-// 	node3.Numvalues = 2
-
-// 	phi1 := new(FactorV2)
-// 	phi1.CPT = []float64{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}
-// 	phi1.Scope = append(phi1.Scope, node1)
-// 	phi1.Scope = append(phi1.Scope, node2)
-// 	phi1.Scope = append(phi1.Scope, node3)
-// 	phi1.Card = []int{2, 3, 2}
-
-// 	phi2 := new(FactorV2)
-// 	phi2.CPT = []float64{0, 1, 2, 3, 4}
-// 	phi2.Scope = append(phi2.Scope, node3)
-// 	phi2.Scope = append(phi2.Scope, node1)
-// 	phi2.Card = []int{2, 2}
-
-// 	ret := DivideFactor(phi1, phi2, true)
-// 	fmt.Println("phi1", phi1)
-// 	fmt.Println("phi2", phi2)
-// 	fmt.Println("ret", ret)
-
-// }

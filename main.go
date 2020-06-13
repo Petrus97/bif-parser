@@ -157,15 +157,29 @@ func main() {
 	rsep := bn.NewSeparator(watsonfact, wrClique, hrsClique)
 	jt.AddSeparators(rsep)
 	jt.SetRoot()
-	jt.Propagate()
+	// jt.Propagate()
+	// color.HiBlue("BEFORE")
+	// w := wrClique.Table.Marginalize(true, watson)
+	// fmt.Println("w", w)
+	// r := wrClique.Table.Marginalize(true, rain)
+	// fmt.Println("r", r)
+	// s := hrsClique.Table.Marginalize(true, rain, sprinkler)
+	// fmt.Println("s", s)
+	// h := hrsClique.Table.Marginalize(true, sprinkler, rain)
+	// fmt.Println("h", h)
 
 	jt.EnterEvidence(holmes, []float64{1, 0})
 	jt.Propagate()
 	for _, c := range jt.Cliques {
 		fmt.Println(c.Name, c.Table)
 	}
+
 	w := wrClique.Table.Marginalize(true, watson)
 	fmt.Println("w", w)
 	r := wrClique.Table.Marginalize(true, rain)
 	fmt.Println("r", r)
+	s := hrsClique.Table.Marginalize(true, rain, sprinkler)
+	fmt.Println("s", s)
+	h := hrsClique.Table.Marginalize(true, sprinkler, rain)
+	fmt.Println("h", h)
 }

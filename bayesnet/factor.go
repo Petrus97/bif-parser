@@ -64,6 +64,7 @@ func CreateFactorV2(n *Node) *FactorV2 {
 // We have to calculate multiple joins, We have P(R), P(T|R) and P(L|T), corrispondig to factors Φ(R) and Φ(R, T)
 // First we calculate P(R,T) = Φ(R)Φ(R, T), so we have a factor net (R, T)->(L)
 // Then we have P(L|R, T), to calculate the factor we do the same way and we have Ψ(R, T, L)
+// This is for a vectorized version. deprecated.
 func FactorProduct(A *Factor, B *Factor) {
 	intersection := intersect(A, B)
 	if len(intersection) < 0 {
@@ -305,6 +306,7 @@ func MultiplyFactor(phi1 *FactorV2, phi2 *FactorV2, retcopy bool) *FactorV2 {
 }
 
 // DivideFactor takes in input two factor and divide them, see p.359 Probabilist Graphical Models. Koller, Friedman. Algorithm 10.A.1
+// Value adjusted by following 9.3 p.297 Koller
 func DivideFactor(phi1 *FactorV2, phi2 *FactorV2, retcopy bool) *FactorV2 {
 	variables := phi1.Scope
 	for _, v := range phi2.Scope {
@@ -341,7 +343,7 @@ func DivideFactor(phi1 *FactorV2, phi2 *FactorV2, retcopy bool) *FactorV2 {
 		} else {
 			values[index] = phi1.CPT[j] / phi2.CPT[k]
 		}
-		fmt.Println(phi1.CPT[j], "/", phi2.CPT[k], "=", phi1.CPT[j]/phi2.CPT[k])
+		// fmt.Println(phi1.CPT[j], "/", phi2.CPT[k], "=", phi1.CPT[j]/phi2.CPT[k])
 		// fmt.Println(values)
 		for idx, variable := range variables {
 			assignment[variable] = assignment[variable] + 1
@@ -368,6 +370,25 @@ func DivideFactor(phi1 *FactorV2, phi2 *FactorV2, retcopy bool) *FactorV2 {
 		copier.Copy(phi1, psi)
 		return nil
 	}
+	// fmt.Println("phi1", phi1)
+	// fmt.Println("phi2", phi2)
+	tmp := make([]float64, quantityvalues)
+
+	valdivide := quantityvalues / len(phi2.CPT)
+	s := 0
+	for i := 0; i < len(phi2.CPT); i++ {
+		for j := s; j < s+valdivide; j++ {
+			// fmt.Println(phi1.CPT[i+j], " / ", phi2.CPT[i], "=", phi1.CPT[i+j]/phi2.CPT[i])
+			if phi2.CPT[i] == 0 {
+				tmp[i+j] = 0
+			} else {
+				tmp[i+j] = phi1.CPT[i+j] / phi2.CPT[i]
+			}
+		}
+		s += valdivide - 1
+	}
+	fmt.Println("tmp", tmp)
+	psi.CPT = tmp
 	return psi
 }
 

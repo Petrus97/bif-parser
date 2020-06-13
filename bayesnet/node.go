@@ -1,14 +1,12 @@
 package bayesnet
 
-import "fmt"
-
 // Probabilities assigned in the model
 type Probabilities struct {
 	States []string
 	Prob   []float64
 }
 
-// Node if net
+// Node of the net
 type Node struct {
 	Name      string
 	Type      string
@@ -26,21 +24,6 @@ func (n *Node) AddParents(nodes ...*Node) {
 		n.Parents = append(n.Parents, nodes[i])
 		nodes[i].Child = append(nodes[i].Child, n)
 	}
-}
-
-func (n *Node) GetPotential() {
-	pot := make([]float64, 0)
-	k := 0
-	for _, par := range n.Parents {
-		for j := 0; j < par.Numvalues; j++ {
-			for i := k; i < k+n.Numvalues; i++ {
-				fmt.Println(par.CPT[j], n.CPT[i], "=", par.CPT[j]*n.CPT[i])
-				pot = append(pot, par.CPT[j]*n.CPT[i])
-			}
-			k += par.Numvalues
-		}
-	}
-	fmt.Println(pot)
 }
 
 func difference(alist []*Node, blist []*Node) []*Node {
