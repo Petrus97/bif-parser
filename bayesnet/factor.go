@@ -5,6 +5,7 @@ import (
 	"reflect"
 
 	mu "github.com/Petrus97/bif-parser/math-utils"
+	"github.com/fatih/color"
 	"github.com/jinzhu/copier"
 	ts "gorgonia.org/tensor"
 )
@@ -370,8 +371,8 @@ func DivideFactor(phi1 *FactorV2, phi2 *FactorV2, retcopy bool) *FactorV2 {
 		copier.Copy(phi1, psi)
 		return nil
 	}
-	// fmt.Println("phi1", phi1)
-	// fmt.Println("phi2", phi2)
+	fmt.Println("phi1", phi1)
+	fmt.Println("phi2", phi2)
 	tmp := make([]float64, quantityvalues)
 
 	valdivide := quantityvalues / len(phi2.CPT)
@@ -421,7 +422,8 @@ func (f *FactorV2) stride(variable *Node) int {
 // Marginalize one ore more variables from a factor, i want to return a factor with summed out variables in input
 func (f *FactorV2) Marginalize(retcopy bool, variables ...*Node) *FactorV2 {
 	fmt.Println("Marginalizing ")
-	for _, variable := range variables {
+	for i, variable := range variables {
+		fmt.Println(i, ".", variable.Name)
 		if !containvar(variable, f.Scope) {
 			fmt.Errorf("Variable not in scope")
 		}
@@ -461,21 +463,50 @@ func (f *FactorV2) Marginalize(retcopy bool, variables ...*Node) *FactorV2 {
 	for _, card := range phi.Card {
 		nvalues *= card
 	}
-	// phi.CPT = make([]float64, nvalues)
+
+	//phi.CPT = make([]float64, nvalues)
+	tmp := make([]float64, nvalues)
+	strides := make(map[*Node]int)
+	newindex := make([]int, 0)
+	for _, v := range variables {
+		strides[v] = f.Strides[v]
+		newindex = append(newindex, f.Strides[v]-1)
+	}
+	color.HiRed("\nstrides\n", strides)
+	color.HiRed("\nnewindex\n", newindex)
+	for v, s := range strides {
+		fmt.Println(v, s)
+		for i := 0; i < nvalues; i++ {
+			for j := i; j < s*nvalues; j += s {
+				tmp[i] += f.CPT[j]
+				fmt.Println(tmp, i)
+			}
+		}
+	}
+	fmt.Println(f.CPT)
+	fmt.Println("MY TMP", tmp)
 	tensor := ts.New(ts.WithBacking(f.CPT), ts.WithShape(f.Card...))
 	fmt.Println(tensor)
 	fmt.Println(varindex)
-	summed, _ := ts.Sum(tensor, varindex...)
+	// for i, v := range varindex {
+	// 	if v == 0 {
+	// 		varindex[i] = 1
+	// 	}
+	// 	if v == 1 {
+	// 		varindex[i] = 0
+	// 	}
+	// }
+	summed, _ := ts.Sum(tensor, newindex...) // 0 sum on x, 1 sum on y, 2 sum on z ecc..
 	fmt.Println(summed)
-	phi.CPT = summed.Data().([]float64)
-
+	// phi.CPT = summed.Data().([]float64)
+	phi.CPT = tmp
 	if !retcopy {
 		copier.Copy(f, phi)
 		return nil
 	}
+	fmt.Println("NEW phi", phi)
 	return phi
 
-	// fmt.Println("NEW", phi)
 }
 
 // Normalize factor CPT

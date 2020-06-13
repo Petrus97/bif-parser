@@ -54,6 +54,7 @@ func TestMarginalization(t *testing.T) {
 	f.Card = []int{3, 2, 2}
 
 	ret := f.Marginalize(true, node2)
+	fmt.Println("RET", ret)
 	expectedresults := []float64{0.33, 0.51, 0.05, 0.07, 0.24, 0.39}
 	for i := 0; i < len(expectedresults); i++ {
 		if expectedresults[i] != f.CPT[i] {

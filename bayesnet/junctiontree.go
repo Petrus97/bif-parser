@@ -134,7 +134,9 @@ func (jt *JunctionTree) distributeEvidence(c *Clique) {
 
 func (jt *JunctionTree) passMessage(from *Clique, to *Clique, sep *Separator) {
 	color.Green("Pass Message")
-	fmt.Println("passign message from", from.Name, "to", to.Name)
+	fmt.Println("passing message from", from.Name, "to", to.Name)
+	fmt.Println(from.Table)
+	fmt.Println(to.Table)
 	m := difference(from.Variables, sep.Variables)
 	color.Red("Var to remove:")
 	for i, v := range m {
@@ -149,13 +151,14 @@ func (jt *JunctionTree) passMessage(from *Clique, to *Clique, sep *Separator) {
 	}
 	fmt.Print("\n")
 	fmt.Println("NEW", new)
+	fmt.Println("SEP", sep.Table)
 	// t*_w x (t*_s / t_S)
-	tmp := DivideFactor(new, sep.Table, true) // t*_s / t_s
-	MultiplyFactor(to.Table, tmp, false)      // t*_w x (t*_s / t_s)
-	// MultiplyFactor(to.Table, new, false)      // t*_w x (t*_s / t_s)
-	// fmt.Println("to", to.Name, to.Table)
-	// DivideFactor(to.Table, sep.Table, false)
-	// fmt.Println("to", to.Name, to.Table)
+	// tmp := DivideFactor(new, sep.Table, true) // t*_s / t_s
+	// MultiplyFactor(to.Table, tmp, false)      // t*_w x (t*_s / t_s)
+	MultiplyFactor(to.Table, new, false) // t*_w x (t*_s / t_s)
+	fmt.Println("to", to.Name, to.Table)
+	DivideFactor(to.Table, sep.Table, false)
+	fmt.Println("to", to.Name, to.Table)
 	sep.Table = new
 	fmt.Println("sep", sep.Table)
 	color.HiMagenta("HRS", jt.Cliques[1].Table)
