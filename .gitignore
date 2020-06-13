@@ -1,2 +1,8 @@
 ignore/
 factor.py
+example_test/asia_test.go
+example_test/earthquake_test.go
+data/survey.bif
+data/munin.bif
+data/earthquake.bif
+data/asia.bif
